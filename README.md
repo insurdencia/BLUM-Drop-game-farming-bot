@@ -1,4 +1,4 @@
-<h1>ENGLISH</h1>
+Z<h1>ENGLISH</h1>
 My tg channel https://t.me/+Dz4YR5Ho_701MjIy<br></br>
 <h2>INSTALLING</h2>
 <br>1) Donwload file from github</br>
@@ -19,7 +19,7 @@ Set proxy to proxy.txt (ip:port:login:password)
 
 if you use windows and you session_path is invalid, try change \ to / in your path (example C:/Blum-main/sessions)
 
-<h1>RUSSIAN</h1>
+<h1>РУССКИЙ</h1>
 Мой тг канал https://t.me/+Dz4YR5Ho_701MjIy<br></br>
 <h2>УСТАНОВКА</h2>
 <br>1) Скачать архив с гита и распаковать его</br>
