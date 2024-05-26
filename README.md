@@ -8,9 +8,13 @@ Set proxy to proxy.txt (ip:port:login:password)
 5) In the SESSION_PATH value put the full path to the sessions folder (example, C:/Blum-main/sessions)
 6) Open in cmd or terminal in folder Blum-main
 7) Download requirements
-```pip install -r requirements.txt```
+```python
+pip install -r requirements.txt
+```
 8) Start main.py
-```python3 main.py```
+```python
+python3 main.py
+```
 9) Create session and start farming
 
 if you use windows and you session_path is invalid, try change \ to / in your path (example C:/Blum-main/sessions)
