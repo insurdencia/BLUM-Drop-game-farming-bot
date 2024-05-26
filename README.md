@@ -1,4 +1,4 @@
-Z<h1>ENGLISH</h1>
+<h1>ENGLISH</h1>
 My tg channel https://t.me/+Dz4YR5Ho_701MjIy<br></br>
 <h2>INSTALLING</h2>
 <br>1) Donwload file from github</br>
