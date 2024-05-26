@@ -2,7 +2,7 @@
 My tg channel https://t.me/+Dz4YR5Ho_701MjIy<br></br>
 <h2>INSTALLING</h2>
 <br>1) Donwload file from github</br>
-<br>2) Set API_ID and API_HASH in the config.py file (https://my.telegram.org/auth?to=apps,)</br>
+<br>2) Set API_ID and API_HASH in the config.py file (https://my.telegram.org/auth?to=apps)</br>
 <br>3) If you want to use proxy, set USE_PROXY = True</br>
 Set proxy to proxy.txt (ip:port:login:password)
 
