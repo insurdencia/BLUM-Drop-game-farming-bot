@@ -32,15 +32,15 @@ class Blum:
         self.auth_token = ""
         self.ref_token=""
         headers = {'User-Agent': UserAgent(os='android').random}
-        self.session = aiohttp.ClientSession(headers=headers, trust_env=True)
+        self.session = aiohttp.ClientSession(headers=headers, trust_env=True, connector=aiohttp.TCPConnector(verify_ssl=False))
 
     async def main(self):
         await asyncio.sleep(random.randint(*config.ACC_DELAY))
-        await self.login()
-        
-        # ip = await self.get_ip()
-        # logger.info(f"main | Thread {self.thread} | {self.name} | Start! | IP : {ip}")
-        logger.info(f"main | Thread {self.thread} | {self.name} | Start!")
+        login = await self.login()
+        if login == False:
+            await self.session.close()
+            return 0
+        logger.info(f"main | Thread {self.thread} | {self.name} | Start! | PROXY : {self.proxy}")
         while True:
             try:
                 valid = await self.is_token_valid()
@@ -85,7 +85,14 @@ class Blum:
                 await asyncio.sleep(random.randint(*config.MINI_SLEEP))
             except Exception as err:
                 logger.error(f"main | Thread {self.thread} | {self.name} | {err}")
-                await asyncio.sleep(random.randint(*config.MINI_SLEEP))
+                if err != "Server disconnected":
+                    valid = await self.is_token_valid()
+                    if not valid:
+                        logger.warning(f"main | Thread {self.thread} | {self.name} | Token is invalid. Refreshing token...")
+                        await self.refresh()
+                    await asyncio.sleep(random.randint(*config.MINI_SLEEP))
+                else:
+                    await asyncio.sleep(5*random.randint(*config.MINI_SLEEP))
 
 
     async def claim(self):
@@ -117,25 +124,41 @@ class Blum:
             pass
 
     async def login(self):
-        
-        json_data = {"query": await self.get_tg_web_data()}
-        resp = await self.session.post("https://gateway.blum.codes/v1/auth/provider/PROVIDER_TELEGRAM_MINI_APP", json=json_data,proxy = self.proxy)
-        resp = await resp.json()
-        self.ref_token = resp.get("token").get("refresh")
-        self.session.headers['Authorization'] = "Bearer " + (resp).get("token").get("access")
+        try:
+            tg_web_data = await self.get_tg_web_data()
+            if tg_web_data == False:
+                return False
+            json_data = {"query": await self.get_tg_web_data()}
+            resp = await self.session.post("https://gateway.blum.codes/v1/auth/provider/PROVIDER_TELEGRAM_MINI_APP", json=json_data,proxy = self.proxy)
+            resp = await resp.json()
+            self.ref_token = resp.get("token").get("refresh")
+            self.session.headers['Authorization'] = "Bearer " + (resp).get("token").get("access")
+            return True
+        except Exception as err:
+            logger.error(f"login | Thread {self.thread} | {self.name} | {err}")
+            if err == "Server disconnected":
+                return True
+            return False
+
 
     async def get_tg_web_data(self):
         await self.client.connect()
-        
-        web_view = await self.client.invoke(RequestWebView(
-            peer=await self.client.resolve_peer('BlumCryptoBot'),
-            bot=await self.client.resolve_peer('BlumCryptoBot'),
-            platform='android',
-            from_bot_menu=False,
-            url='https://telegram.blum.codes/'
-        ))
+        try:
+            web_view = await self.client.invoke(RequestWebView(
+                peer=await self.client.resolve_peer('BlumCryptoBot'),
+                bot=await self.client.resolve_peer('BlumCryptoBot'),
+                platform='android',
+                from_bot_menu=False,
+                url='https://telegram.blum.codes/'
+            ))
 
-        auth_url = web_view.url
+            auth_url = web_view.url
+        except Exception as err:
+            logger.error(f"main | Thread {self.thread} | {self.name} | {err}")
+            if 'USER_DEACTIVATED_BAN' in str(err):
+                logger.error(f"login | Thread {self.thread} | {self.name} | USER BANNED")
+                await self.client.disconnect()
+                return False
         await self.client.disconnect()
         return unquote(string=unquote(string=auth_url.split('tgWebAppData=')[1].split('&tgWebAppVersion')[0]))
     
@@ -159,14 +182,26 @@ class Blum:
         resp_json = await resp.json()
         try:
             for task in resp_json:
-                if task['status'] == "NOT_STARTED":
-                    await self.session.post(f"https://game-domain.blum.codes/api/v1/tasks/{task['id']}/start",proxy=self.proxy)
-                    await asyncio.sleep(random.randint(*config.MINI_SLEEP))
-                elif task['status'] == "DONE":
-                    answer = await self.session.post(f"https://game-domain.blum.codes/api/v1/tasks/{task['id']}/claim",proxy=self.proxy)
-                    answer = await answer.json()
-                    logger.success(f"tasks | Thread {self.thread} | {self.name} | Claimed TASK reward! Claimed: {answer['reward']}")
-                    await asyncio.sleep(random.randint(*config.MINI_SLEEP))
+                if "subTasks" in task:
+                    for subtask in task['subTasks']:
+                        if subtask['status'] == "NOT_STARTED":
+                            await self.session.post(f"https://game-domain.blum.codes/api/v1/tasks/{subtask['id']}/start",proxy=self.proxy)
+                            logger.info(f"tasks | Thread {self.thread} | {self.name} | Summer Quest | TRY DO {subtask['title']} task!")
+                            await asyncio.sleep(random.randint(*config.MINI_SLEEP))
+                        elif subtask['status'] == "READY_FOR_CLAIM":
+                            answer = await self.session.post(f"https://game-domain.blum.codes/api/v1/tasks/{subtask['id']}/claim",proxy=self.proxy)
+                            answer = await answer.json()
+                            logger.success(f"tasks | Thread {self.thread} | {self.name} | Summer Quest | DONE {subtask['title']} task!")
+                            await asyncio.sleep(random.randint(*config.MINI_SLEEP))
+                else:  
+                    if task['status'] == "NOT_STARTED":
+                        await self.session.post(f"https://game-domain.blum.codes/api/v1/tasks/{task['id']}/start",proxy=self.proxy)
+                        await asyncio.sleep(random.randint(*config.MINI_SLEEP))
+                    elif task['status'] == "READY_FOR_CLAIM":
+                        answer = await self.session.post(f"https://game-domain.blum.codes/api/v1/tasks/{task['id']}/claim",proxy=self.proxy)
+                        answer = await answer.json()
+                        logger.success(f"tasks | Thread {self.thread} | {self.name} | Claimed TASK reward! Claimed: {answer['reward']}")
+                        await asyncio.sleep(random.randint(*config.MINI_SLEEP))
         except Exception as err:
             logger.error(f"tasks | Thread {self.thread} | {self.name} | {err}")
     
@@ -233,6 +268,11 @@ class Blum:
         
         if await response.text() == "OK":
             logger.success(f"game | Thread {self.thread} | {self.name} | Claimed DROP GAME ! Claimed: {count}")
+        elif "Invalid jwt token" in await response.text():
+            valid = await self.is_token_valid()
+            if not valid:
+                logger.warning(f"game | Thread {self.thread} | {self.name} | Token is invalid. Refreshing token...")
+                await self.refresh()
         else:
             logger.error(f"game | Thread {self.thread} | {self.name} | {await response.text()}")
     
@@ -240,7 +280,3 @@ class Blum:
         resp = await self.session.post("https://game-domain.blum.codes/api/v1/daily-reward?offset=-180", proxy=self.proxy)
         txt = await resp.text()
         return True if txt == 'OK' else txt
-    
-    async def get_ip(self):
-        resp = await self.session.get("https://api.ipify.org", proxy=self.proxy)
-        return await resp.text()
